@@ -1,12 +1,12 @@
 # codex_status_tmux
 
-Codex のローカルセッション情報 (`~/.codex/sessions/*.jsonl`) から、tmux のステータスバーに利用枠の残量を表示します。
+Show remaining Codex limits in your tmux status bar using local session data (`~/.codex/sessions/*.jsonl`).
 
-表示例:
+Example:
 - `5h 93%`
 - `week 71% (6d)`
 
-`week` の `(6d)` は週次リセットまでの残り日数です。
+`(6d)` is the number of days remaining until the weekly reset.
 
 ## Prerequisites
 
@@ -25,7 +25,7 @@ cp scripts/codex_limits_tmux.sh "$HOME/.local/bin/codex_limits_tmux.sh"
 
 ## tmux config
 
-`~/.tmux.conf` に追加:
+Add this to `~/.tmux.conf`:
 
 ```tmux
 set -g status-interval 30
@@ -35,13 +35,13 @@ set -g status-left '#[bold]#S#[default] '
 set -g status-right '#($HOME/.local/bin/codex_limits_tmux.sh) | %Y-%m-%d %H:%M '
 ```
 
-反映:
+Apply:
 
 ```bash
 tmux source-file ~/.tmux.conf
 ```
 
-## Color rules
+## Color Rules
 
 - White text + green background: remaining > 25%
 - White text + yellow background: remaining 11-25%
