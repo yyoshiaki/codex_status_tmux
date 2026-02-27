@@ -5,8 +5,11 @@ Show remaining Codex limits in your tmux status bar using local session data (`~
 Example:
 - `5h 93%`
 - `week 71% (6d)`
+- `cr N/A`
 
 `(6d)` is the number of days remaining until the weekly reset.
+`5h` / `week` prefer the main limit (`limit_id=codex`) over Spark limits. (Updated: 2026-02-27 ET, via MCP time)
+`cr` shows credit balance when available, otherwise `N/A`. (Updated: 2026-02-27 ET, via MCP time)
 
 ## Prerequisites
 
