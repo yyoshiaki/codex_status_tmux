@@ -14,43 +14,84 @@ if [[ ! -d "$SESSIONS_DIR" ]]; then
   exit 0
 fi
 
-latest_file="$({ find "$SESSIONS_DIR" -type f -name '*.jsonl' -print0 2>/dev/null || true; } | xargs -0 ls -t 2>/dev/null | head -n 1 || true)"
+session_files="$(
+  find "$SESSIONS_DIR" -type f -name '*.jsonl' -printf '%T@ %p\n' 2>/dev/null \
+    | sort -rn \
+    | awk '{ $1=""; sub(/^ /, ""); print }'
+)"
 
-if [[ -z "${latest_file}" || ! -f "${latest_file}" ]]; then
+if [[ -z "$session_files" ]]; then
   printf 'codex N/A'
   exit 0
 fi
 
-latest_primary_rate_limits="$(
-  jq -c '
-    select(.type == "event_msg" and .payload.type == "token_count")
-    | .payload.rate_limits
-    | select(.limit_id == "codex")
-  ' "$latest_file" 2>/dev/null | tail -n 1
-)"
+pick_rate_limits_from_file() {
+  local file="$1"
+  local primary_rate_limits=""
+  local non_spark_rate_limits=""
+  local any_rate_limits=""
 
-latest_non_spark_rate_limits="$(
-  jq -c '
-    select(.type == "event_msg" and .payload.type == "token_count")
-    | .payload.rate_limits
-    | select((.limit_name // "" | test("spark"; "i")) | not)
-  ' "$latest_file" 2>/dev/null | tail -n 1
-)"
+  primary_rate_limits="$(
+    jq -c '
+      def rate_limits_stream:
+        .payload.rate_limits
+        | if type == "array" then .[] else . end;
+      select(.type == "event_msg" and .payload.type == "token_count")
+      | rate_limits_stream
+      | select(type == "object")
+      | select(.limit_id == "codex")
+    ' "$file" 2>/dev/null | tail -n 1
+  )"
 
-latest_any_rate_limits="$(
-  jq -c '
-    select(.type == "event_msg" and .payload.type == "token_count")
-    | .payload.rate_limits
-  ' "$latest_file" 2>/dev/null | tail -n 1
-)"
+  non_spark_rate_limits="$(
+    jq -c '
+      def rate_limits_stream:
+        .payload.rate_limits
+        | if type == "array" then .[] else . end;
+      select(.type == "event_msg" and .payload.type == "token_count")
+      | rate_limits_stream
+      | select(type == "object")
+      | select((.limit_name // "" | test("spark"; "i")) | not)
+    ' "$file" 2>/dev/null | tail -n 1
+  )"
 
-selected_rate_limits="$latest_primary_rate_limits"
-if [[ -z "$selected_rate_limits" ]]; then
-  selected_rate_limits="$latest_non_spark_rate_limits"
-fi
-if [[ -z "$selected_rate_limits" ]]; then
-  selected_rate_limits="$latest_any_rate_limits"
-fi
+  any_rate_limits="$(
+    jq -c '
+      def rate_limits_stream:
+        .payload.rate_limits
+        | if type == "array" then .[] else . end;
+      select(.type == "event_msg" and .payload.type == "token_count")
+      | rate_limits_stream
+      | select(type == "object")
+    ' "$file" 2>/dev/null | tail -n 1
+  )"
+
+  if [[ -n "$primary_rate_limits" ]]; then
+    printf '%s' "$primary_rate_limits"
+    return 0
+  fi
+
+  if [[ -n "$non_spark_rate_limits" ]]; then
+    printf '%s' "$non_spark_rate_limits"
+    return 0
+  fi
+
+  if [[ -n "$any_rate_limits" ]]; then
+    printf '%s' "$any_rate_limits"
+    return 0
+  fi
+
+  return 1
+}
+
+selected_rate_limits=''
+while IFS= read -r session_file; do
+  [[ -n "$session_file" ]] || continue
+  selected_rate_limits="$(pick_rate_limits_from_file "$session_file" || true)"
+  if [[ -n "$selected_rate_limits" ]]; then
+    break
+  fi
+done <<< "$session_files"
 
 if [[ -z "$selected_rate_limits" ]]; then
   printf 'codex N/A'

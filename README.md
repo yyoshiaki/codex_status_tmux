@@ -10,6 +10,7 @@ Example:
 `(6d)` is the number of days remaining until the weekly reset.
 `5h` / `week` prefer the main limit (`limit_id=codex`) over Spark limits. (Updated: 2026-02-27 ET, via MCP time)
 `cr` shows credit balance when available, otherwise `N/A`. (Updated: 2026-02-27 ET, via MCP time)
+If the newest session ends with `rate_limits: null`, the script walks back through recent session logs and uses the newest valid limit snapshot instead of showing `codex N/A`. (Updated: 2026-03-14 ET, via MCP time)
 
 ## Prerequisites
 
